@@ -49,6 +49,7 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.bekaryab.qadamevents.R
@@ -205,7 +206,10 @@ fun AuthTextField(
 fun SubmitButton(
     onClick: () -> Unit,
     isLoading: Boolean = false,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    label: String = "SUBMIT",
+    fontSize: TextUnit = 28.sp,
+    letterSpacing: TextUnit = 6.sp
 ) {
     Button(
         onClick = onClick,
@@ -257,12 +261,12 @@ fun SubmitButton(
             )
         } else {
             Text(
-                text = "SUBMIT",
+                text = label,
                 fontFamily = AlumniSansSc,
-                fontSize = 28.sp,
+                fontSize = fontSize,
                 lineHeight = 30.sp,
                 fontWeight = FontWeight.Medium,
-                letterSpacing = 6.sp,
+                letterSpacing = letterSpacing,
                 color = Color.White,
                 textAlign = TextAlign.Center
             )

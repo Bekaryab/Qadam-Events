@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -20,8 +21,16 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -35,7 +44,12 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.bekaryab.qadamevents.R
+import com.bekaryab.qadamevents.domain.model.Event
+import com.bekaryab.qadamevents.ui.auth.SubmitButton
+import com.bekaryab.qadamevents.ui.events.components.EventsEmptyState
+import com.bekaryab.qadamevents.ui.events.components.EventsGrid
 import com.bekaryab.qadamevents.ui.theme.AlumniSansSc
+import kotlinx.coroutines.launch
 
 private val ProfileNavy = Color(0xFF2E3768)
 private val ProfileGrayBlue = Color(0xFF7B8AA0)
@@ -274,6 +288,160 @@ private fun MenuButton(onClick: () -> Unit) {
                 end = Offset(startX + lineWidth, centerY),
                 strokeWidth = thickness,
                 cap = StrokeCap.Round
+            )
+        }
+    }
+}
+
+/**
+ * Full Profile page: existing header, section tabs, per-tab content, and the
+ * placeholders for unfinished destinations. Saved and liked event ids are kept
+ * as two independent in-memory collections owned by this screen.
+ *
+ * @param myEvents events created by the current user (from the shared
+ * repository); the section selection is hoisted so navigation (e.g. after
+ * saving) can select MY EVENTS without duplicate state.
+ */
+@Composable
+fun ProfileScreen(
+    email: String,
+    onLogout: () -> Unit,
+    section: ProfileSection,
+    onSectionChange: (ProfileSection) -> Unit,
+    myEvents: List<Event>,
+    allEvents: List<Event>,
+    onCreateEvent: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    var savedIds by rememberSaveable { mutableStateOf(listOf<String>()) }
+    var likedIds by rememberSaveable { mutableStateOf(listOf<String>()) }
+    val savedSet = savedIds.toSet()
+    val likedSet = likedIds.toSet()
+
+    val snackbarHostState = remember { SnackbarHostState() }
+    val scope = rememberCoroutineScope()
+
+    fun toggleId(ids: List<String>, id: String): List<String> =
+        if (id in ids) ids - id else ids + id
+
+    Column(modifier = modifier.fillMaxSize()) {
+        ProfileHeader()
+
+        ProfileSectionTabs(
+            selected = section,
+            onTabSelected = onSectionChange,
+            modifier = Modifier.padding(horizontal = 12.dp)
+        )
+
+        Spacer(modifier = Modifier.height(4.dp))
+
+        Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
+            when (section) {
+                ProfileSection.MY_EVENTS -> {
+                    if (myEvents.isEmpty()) {
+                        MyEventsEmptyState(onCreateEvent = onCreateEvent)
+                    } else {
+                        EventsGrid(
+                            events = myEvents,
+                            savedIds = savedSet,
+                            likedIds = likedSet,
+                            onSaveToggle = { savedIds = toggleId(savedIds, it) },
+                            onLikeToggle = { likedIds = toggleId(likedIds, it) },
+                            onOpenDetails = { }
+                        )
+                    }
+                }
+
+                ProfileSection.SAVES -> {
+                    val saved = allEvents.filter { it.id in savedSet }
+                    if (saved.isEmpty()) {
+                        EventsEmptyState(
+                            message = "No saved events yet",
+                            iconRes = R.drawable.ic_heart_outline
+                        )
+                    } else {
+                        EventsGrid(
+                            events = saved,
+                            savedIds = savedSet,
+                            likedIds = likedSet,
+                            onSaveToggle = { savedIds = toggleId(savedIds, it) },
+                            onLikeToggle = { likedIds = toggleId(likedIds, it) },
+                            onOpenDetails = { }
+                        )
+                    }
+                }
+
+                ProfileSection.LIKES -> {
+                    val liked = allEvents.filter { it.id in likedSet }
+                    if (liked.isEmpty()) {
+                        EventsEmptyState(
+                            message = "No liked events yet",
+                            iconRes = R.drawable.ic_thumb_up
+                        )
+                    } else {
+                        EventsGrid(
+                            events = liked,
+                            savedIds = savedSet,
+                            likedIds = likedSet,
+                            onSaveToggle = { savedIds = toggleId(savedIds, it) },
+                            onLikeToggle = { likedIds = toggleId(likedIds, it) },
+                            onOpenDetails = { }
+                        )
+                    }
+                }
+
+                ProfileSection.SETTINGS -> ProfileSettings(
+                    email = email,
+                    onLogout = onLogout,
+                    onPlaceholder = { message ->
+                        scope.launch { snackbarHostState.showSnackbar(message) }
+                    }
+                )
+            }
+
+            SnackbarHost(
+                hostState = snackbarHostState,
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .padding(8.dp)
+            )
+        }
+    }
+}
+
+/** Compact empty state for users who have not created any events yet. */
+@Composable
+private fun MyEventsEmptyState(onCreateEvent: () -> Unit) {
+    Box(
+        modifier = Modifier.fillMaxSize(),
+        contentAlignment = Alignment.Center
+    ) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            modifier = Modifier.padding(horizontal = 32.dp)
+        ) {
+            Icon(
+                painter = painterResource(id = R.drawable.ic_schedule),
+                contentDescription = null,
+                tint = ProfileGrayBlue,
+                modifier = Modifier.size(40.dp)
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(
+                text = "You haven't created any events yet",
+                fontFamily = AlumniSansSc,
+                fontWeight = FontWeight.Medium,
+                fontSize = 14.sp,
+                color = ProfileGrayBlue,
+                textAlign = TextAlign.Center
+            )
+            Spacer(modifier = Modifier.height(12.dp))
+            SubmitButton(
+                onClick = onCreateEvent,
+                label = "CREATE EVENT",
+                fontSize = 20.sp,
+                letterSpacing = 3.sp,
+                modifier = Modifier.fillMaxWidth(0.75f)
             )
         }
     }

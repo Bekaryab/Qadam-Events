@@ -46,12 +46,17 @@ private val CreateSquare = Color(0xFF2F2A5C)
  * Pure UI: the caller owns [selectedTab] state (or wires it to navigation) and
  * receives clicks via [onTabSelected]. Tabs share the row with equal [weight],
  * so no hardcoded widths are needed.
+ *
+ * @param translucent when true, the capsule uses a frosted translucent fill
+ * so full-bleed content (Reels media) shows through. Defaults to false, so
+ * every other screen keeps its exact opaque appearance.
  */
 @Composable
 fun QadamBottomBar(
     selectedTab: QadamTab,
     onTabSelected: (QadamTab) -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    translucent: Boolean = false
 ) {
     Surface(
         modifier = modifier
@@ -64,7 +69,9 @@ fun QadamBottomBar(
                 ambientColor = Color.Black.copy(alpha = 0.10f)
             ),
         shape = RoundedCornerShape(26.dp),
-        color = BarBackground,
+        // Frosted-glass approximation: translucency only (true backdrop blur
+        // would need a new dependency, rejected). Icons/labels stay opaque.
+        color = if (translucent) Color.White.copy(alpha = 0.60f) else BarBackground,
         tonalElevation = 0.dp,
         shadowElevation = 0.dp
     ) {

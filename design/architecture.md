@@ -29,7 +29,7 @@ flowchart TB
         SEARCH["SearchEventsUseCase"]
         DETAILS["GetEventDetailsUseCase"]
         REPO["EventRepository"]
-        REPOIMPL["EventRepositoryImpl"]
+        REPOIMPL["InMemoryEventRepository"]
         DATA["Event Data"]
     end
 
@@ -43,6 +43,7 @@ flowchart TB
     end
 
     MA --> NAV
+    MA -.->|"debug_events extra (debug builds)"| ROUTE
     DI --> AUTHIMPL
 
     NAV --> LOGIN
