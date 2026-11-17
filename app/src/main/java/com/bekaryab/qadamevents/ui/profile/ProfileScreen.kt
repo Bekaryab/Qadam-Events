@@ -25,6 +25,7 @@ import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -46,6 +47,7 @@ import androidx.compose.ui.unit.sp
 import com.bekaryab.qadamevents.R
 import com.bekaryab.qadamevents.domain.model.Event
 import com.bekaryab.qadamevents.ui.auth.SubmitButton
+import com.bekaryab.qadamevents.ui.events.components.CardAction
 import com.bekaryab.qadamevents.ui.events.components.EventsEmptyState
 import com.bekaryab.qadamevents.ui.events.components.EventsGrid
 import com.bekaryab.qadamevents.ui.theme.AlumniSansSc
@@ -311,6 +313,13 @@ fun ProfileScreen(
     myEvents: List<Event>,
     allEvents: List<Event>,
     onCreateEvent: () -> Unit,
+    onEditEvent: (Event) -> Unit,
+    onArchiveEvent: (Event) -> Unit,
+    onRestoreEvent: (Event) -> Unit,
+    onDeleteEvent: (Event) -> Unit,
+    manageNotice: String?,
+    manageError: String?,
+    onConsumeManageFeedback: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     var savedIds by rememberSaveable { mutableStateOf(listOf<String>()) }
@@ -323,6 +332,15 @@ fun ProfileScreen(
 
     fun toggleId(ids: List<String>, id: String): List<String> =
         if (id in ids) ids - id else ids + id
+
+    LaunchedEffect(manageNotice, manageError) {
+        val message = manageError ?: manageNotice ?: return@LaunchedEffect
+        snackbarHostState.showSnackbar(message)
+        onConsumeManageFeedback()
+    }
+
+    // Archived items stay out of every active list.
+    val activeEvents = allEvents.filterNot { it.isArchived }
 
     Column(modifier = modifier.fillMaxSize()) {
         ProfileHeader()
@@ -347,13 +365,26 @@ fun ProfileScreen(
                             likedIds = likedSet,
                             onSaveToggle = { savedIds = toggleId(savedIds, it) },
                             onLikeToggle = { likedIds = toggleId(likedIds, it) },
-                            onOpenDetails = { }
+                            onOpenDetails = { },
+                            actions = listOf(
+                                CardAction.EDIT,
+                                CardAction.ARCHIVE,
+                                CardAction.DELETE
+                            ),
+                            onCardAction = { action, event ->
+                                when (action) {
+                                    CardAction.EDIT -> onEditEvent(event)
+                                    CardAction.ARCHIVE -> onArchiveEvent(event)
+                                    CardAction.DELETE -> onDeleteEvent(event)
+                                    CardAction.RESTORE -> Unit
+                                }
+                            }
                         )
                     }
                 }
 
                 ProfileSection.SAVES -> {
-                    val saved = allEvents.filter { it.id in savedSet }
+                    val saved = activeEvents.filter { it.id in savedSet }
                     if (saved.isEmpty()) {
                         EventsEmptyState(
                             message = "No saved events yet",
@@ -372,7 +403,7 @@ fun ProfileScreen(
                 }
 
                 ProfileSection.LIKES -> {
-                    val liked = allEvents.filter { it.id in likedSet }
+                    val liked = activeEvents.filter { it.id in likedSet }
                     if (liked.isEmpty()) {
                         EventsEmptyState(
                             message = "No liked events yet",
@@ -386,6 +417,37 @@ fun ProfileScreen(
                             onSaveToggle = { savedIds = toggleId(savedIds, it) },
                             onLikeToggle = { likedIds = toggleId(likedIds, it) },
                             onOpenDetails = { }
+                        )
+                    }
+                }
+
+                ProfileSection.ARCHIVED -> {
+                    val archived = allEvents.filter { it.isArchived }
+                    if (archived.isEmpty()) {
+                        EventsEmptyState(
+                            message = "No archived events",
+                            iconRes = R.drawable.ic_schedule
+                        )
+                    } else {
+                        EventsGrid(
+                            events = archived,
+                            savedIds = savedSet,
+                            likedIds = likedSet,
+                            onSaveToggle = { savedIds = toggleId(savedIds, it) },
+                            onLikeToggle = { likedIds = toggleId(likedIds, it) },
+                            onOpenDetails = { },
+                            actions = listOf(
+                                CardAction.RESTORE,
+                                CardAction.DELETE
+                            ),
+                            onCardAction = { action, event ->
+                                when (action) {
+                                    CardAction.RESTORE -> onRestoreEvent(event)
+                                    CardAction.DELETE -> onDeleteEvent(event)
+                                    CardAction.EDIT -> onEditEvent(event)
+                                    CardAction.ARCHIVE -> onArchiveEvent(event)
+                                }
+                            }
                         )
                     }
                 }

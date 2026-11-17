@@ -4,18 +4,19 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.createSavedStateHandle
 import androidx.lifecycle.viewmodel.CreationExtras
-import com.bekaryab.qadamevents.domain.repository.EventRepository
+import com.bekaryab.qadamevents.domain.repository.RemoteEventRepository
 import com.bekaryab.qadamevents.domain.usecase.GetEventsUseCase
-import com.bekaryab.qadamevents.domain.usecase.SearchEventsUseCase
 
 /**
- * Factory for [EventsViewModel] only (mirrors [com.bekaryab.qadamevents.ui.auth.AuthViewModelFactory]).
- * The [SavedStateHandle] comes from the Activity's [CreationExtras], so the
+ * Factory for [EventsViewModel] only (mirrors
+ * [com.bekaryab.qadamevents.ui.auth.AuthViewModelFactory]).
+ *
+ * The [SavedStateHandle] comes from the Activity [CreationExtras], so the
  * ViewModel obtained through [ViewModelProvider] survives rotation in the
- * Activity's ViewModelStore.
+ * Activity ViewModelStore.
  */
 class EventsViewModelFactory(
-    private val eventRepository: EventRepository
+    private val remoteEventRepository: RemoteEventRepository
 ) : ViewModelProvider.Factory {
 
     @Suppress("UNCHECKED_CAST")
@@ -25,8 +26,7 @@ class EventsViewModelFactory(
     ): T {
         if (modelClass.isAssignableFrom(EventsViewModel::class.java)) {
             return EventsViewModel(
-                GetEventsUseCase(eventRepository),
-                SearchEventsUseCase(eventRepository),
+                GetEventsUseCase(remoteEventRepository),
                 extras.createSavedStateHandle()
             ) as T
         }

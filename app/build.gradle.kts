@@ -4,6 +4,12 @@ plugins {
     id("com.google.gms.google-services")
 }
 
+// Default DummyJSON demo API. Override for another server with:
+// ./gradlew ... -PEVENTS_BASE_URL=https://your-api.example/
+val eventsBaseUrl = (providers.gradleProperty("EVENTS_BASE_URL").orNull
+    ?: "https://dummyjson.com/")
+    .let { if (it.endsWith("/")) it else "$it/" }
+
 android {
     namespace = "com.bekaryab.qadamevents"
     compileSdk {
@@ -16,6 +22,8 @@ android {
         targetSdk = 37
         versionCode = 1
         versionName = "1.0"
+
+        buildConfigField("String", "EVENTS_BASE_URL", "\"$eventsBaseUrl\"")
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -61,7 +69,16 @@ dependencies {
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.lifecycle.runtime.compose)
+// AndroidX Media3 ExoPlayer for local Reels video playback
+    implementation(libs.androidx.media3.exoplayer)
+    implementation(libs.androidx.media3.ui)
+// Retrofit + OkHttp for REST API integration
+    implementation(libs.retrofit)
+    implementation(libs.retrofit.converter.gson)
+    implementation(libs.okhttp)
+    implementation(libs.okhttp.logging.interceptor)
     testImplementation(libs.junit)
+    testImplementation(libs.kotlinx.coroutines.test)
     androidTestImplementation(platform(libs.androidx.compose.bom))
     androidTestImplementation(libs.androidx.compose.ui.test.junit4)
     androidTestImplementation(libs.androidx.espresso.core)

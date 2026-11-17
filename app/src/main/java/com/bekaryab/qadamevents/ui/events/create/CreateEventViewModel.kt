@@ -28,8 +28,11 @@ data class CreateEventUiState(
     val validationAttempted: Boolean = false,
     val isSaving: Boolean = false,
     val errorMessage: String? = null,
-    val saveSuccess: Boolean = false
-)
+    val saveSuccess: Boolean = false,
+    val editingOriginal: Event? = null
+) {
+    val isEditing: Boolean get() = editingOriginal != null
+}
 
 /** Categories offered by the Create form. */
 val EventCategories = listOf(
@@ -79,6 +82,41 @@ class CreateEventViewModel(
     fun onCoverPicked(uri: String?) =
         _uiState.update { it.copy(coverUri = uri, errorMessage = null) }
 
+    /** Clears the form for a fresh create (also drops any edit session). */
+    fun resetForm() {
+        _uiState.value = CreateEventUiState()
+    }
+
+    /**
+     * Prefills every field from an existing event for editing. Identity,
+     * ownership, and archive state travel in [editingOriginal] and are
+     * preserved on save, so an edit can never duplicate or orphan the event.
+     */
+    fun loadForEdit(event: Event) {
+        val dateMillis = event.startMillis?.let(::toLocalStartOfDay)
+        val startMinutes = if (event.startMillis != null && dateMillis != null) {
+            ((event.startMillis - dateMillis) / 60_000L).toInt()
+        } else {
+            null
+        }
+        val endMinutes = if (event.endMillis != null && dateMillis != null) {
+            ((event.endMillis - dateMillis) / 60_000L).toInt()
+        } else {
+            null
+        }
+        _uiState.value = CreateEventUiState(
+            title = event.title,
+            description = event.description,
+            category = event.category,
+            location = event.location,
+            dateMillis = dateMillis,
+            startMinutes = startMinutes,
+            endMinutes = endMinutes,
+            coverUri = event.coverImageUri,
+            editingOriginal = event
+        )
+    }
+
     // Per-field messages; shown only after a save attempt. All rules live
     // here so Composables stay stateless.
     fun titleError(): String? =
@@ -124,8 +162,19 @@ class CreateEventViewModel(
         _uiState.update { it.copy(isSaving = true) }
         viewModelScope.launch {
             try {
-                val event = buildEvent(_uiState.value)
-                val result = eventRepository.addEvent(event)
+                val editing = _uiState.value.editingOriginal
+                val result = if (editing != null) {
+                    val base = buildEvent(_uiState.value)
+                    eventRepository.updateEvent(
+                        base.copy(
+                            id = editing.id,
+                            ownerUid = editing.ownerUid,
+                            isArchived = editing.isArchived
+                        )
+                    )
+                } else {
+                    eventRepository.addEvent(buildEvent(_uiState.value))
+                }
                 result.fold(
                     onSuccess = {
                         _uiState.update { it.copy(isSaving = false, saveSuccess = true) }

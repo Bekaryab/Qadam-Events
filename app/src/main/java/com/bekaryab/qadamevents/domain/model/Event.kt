@@ -18,5 +18,6 @@ data class Event(
     val coverImageUri: String? = null,
     val ownerUid: String? = null,
     val startMillis: Long? = null,
-    val endMillis: Long? = null
+    val endMillis: Long? = null,
+    val isArchived: Boolean = false
 )

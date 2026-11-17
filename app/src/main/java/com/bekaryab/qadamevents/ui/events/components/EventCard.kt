@@ -20,10 +20,19 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -61,6 +70,14 @@ private val ImageTones = listOf(
  * LIKES tabs still filter on them, so tab functionality is preserved and the
  * toggles can be re-attached to future UI without signature changes.
  */
+/** Owner management actions offered through the card overflow menu. */
+enum class CardAction(val label: String) {
+    EDIT("Edit"),
+    ARCHIVE("Archive"),
+    DELETE("Delete"),
+    RESTORE("Restore")
+}
+
 @Composable
 fun ProfileEventCard(
     event: Event,
@@ -69,8 +86,13 @@ fun ProfileEventCard(
     onSaveClick: () -> Unit,
     onLikeClick: () -> Unit,
     onOpenClick: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    actions: List<CardAction> = emptyList(),
+    onAction: (CardAction, Event) -> Unit = { _, _ -> }
 ) {
+    var menuOpen by remember { mutableStateOf(false) }
+    var confirmDelete by remember { mutableStateOf(false) }
+
     Surface(
         modifier = modifier
             .fillMaxWidth()
@@ -133,6 +155,107 @@ fun ProfileEventCard(
                         .padding(8.dp)
 
                 )
+
+                // Owner-only overflow menu; absent (and layout-free) when
+                // actions is empty so other tabs render exactly as before.
+                if (actions.isNotEmpty()) {
+                    Box(modifier = Modifier.align(Alignment.TopEnd)) {
+                        IconButton(
+                            onClick = { menuOpen = true },
+                            modifier = Modifier
+                                .padding(2.dp)
+                                .size(40.dp)
+                        ) {
+                            Box(
+                                contentAlignment = Alignment.Center,
+                                modifier = Modifier
+                                    .size(32.dp)
+                                    .background(Color.White, CircleShape)
+                            ) {
+                                Icon(
+                                    painter = painterResource(id = R.drawable.ic_more_vert),
+                                    contentDescription = "Event actions",
+                                    tint = CardNavy,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                            }
+                        }
+                        DropdownMenu(
+                            expanded = menuOpen,
+                            onDismissRequest = { menuOpen = false }
+                        ) {
+                            actions.forEach { action ->
+                                DropdownMenuItem(
+                                    text = {
+                                        Text(
+                                            text = action.label,
+                                            fontFamily = AlumniSansSc,
+                                            fontSize = 13.sp,
+                                            color = CardNavy
+                                        )
+                                    },
+                                    onClick = {
+                                        menuOpen = false
+                                        if (action == CardAction.DELETE) {
+                                            confirmDelete = true
+                                        } else {
+                                            onAction(action, event)
+                                        }
+                                    }
+                                )
+                            }
+                        }
+                    }
+                    if (confirmDelete) {
+                        AlertDialog(
+                            onDismissRequest = { confirmDelete = false },
+                            title = {
+                                Text(
+                                    text = "Delete \"${event.title}\"?",
+                                    fontFamily = AlumniSansSc,
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 16.sp,
+                                    color = CardNavy
+                                )
+                            },
+                            text = {
+                                Text(
+                                    text = "This will permanently delete the event. " +
+                                        "This cannot be undone.",
+                                    fontFamily = AlumniSansSc,
+                                    fontSize = 13.sp,
+                                    color = CardMuted
+                                )
+                            },
+                            confirmButton = {
+                                TextButton(
+                                    onClick = {
+                                        confirmDelete = false
+                                        onAction(CardAction.DELETE, event)
+                                    }
+                                ) {
+                                    Text(
+                                        text = "Delete",
+                                        fontFamily = AlumniSansSc,
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 14.sp,
+                                        color = Color(0xFFB3261E)
+                                    )
+                                }
+                            },
+                            dismissButton = {
+                                TextButton(onClick = { confirmDelete = false }) {
+                                    Text(
+                                        text = "Cancel",
+                                        fontFamily = AlumniSansSc,
+                                        fontSize = 14.sp,
+                                        color = CardNavy
+                                    )
+                                }
+                            }
+                        )
+                    }
+                }
             }
 
             Column(
@@ -249,7 +372,9 @@ fun EventsGrid(
     onSaveToggle: (String) -> Unit,
     onLikeToggle: (String) -> Unit,
     onOpenDetails: (String) -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    actions: List<CardAction> = emptyList(),
+    onCardAction: (CardAction, Event) -> Unit = { _, _ -> }
 ) {
     LazyVerticalGrid(
         columns = GridCells.Fixed(2),
@@ -265,7 +390,9 @@ fun EventsGrid(
                 isLiked = event.id in likedIds,
                 onSaveClick = { onSaveToggle(event.id) },
                 onLikeClick = { onLikeToggle(event.id) },
-                onOpenClick = { onOpenDetails(event.id) }
+                onOpenClick = { onOpenDetails(event.id) },
+                actions = actions,
+                onAction = onCardAction
             )
         }
     }

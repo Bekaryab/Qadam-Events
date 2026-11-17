@@ -11,6 +11,12 @@ interface EventRepository {
     /** Stores a new event; fails if the id already exists (no duplicates). */
     suspend fun addEvent(event: Event): Result<Event>
 
+    /** Replaces the stored event with the same id; fails if it is missing. */
+    suspend fun updateEvent(event: Event): Result<Event>
+
+    /** Permanently removes the event with the given id; fails if missing. */
+    suspend fun deleteEvent(id: String): Result<Unit>
+
     /**
      * Simulation control for the SIS 4 data layer only. When true, the
      * simulated read operations below fail instead of returning data.

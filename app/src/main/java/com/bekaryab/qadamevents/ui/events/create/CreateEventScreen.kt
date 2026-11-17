@@ -120,7 +120,7 @@ fun CreateEventScreen(
             .imePadding()
     ) {
         Text(
-            text = "CREATE EVENT",
+            text = if (state.isEditing) "EDIT EVENT" else "CREATE EVENT",
             fontFamily = AlumniSansSc,
             fontWeight = FontWeight.Black,
             fontSize = 26.sp,
@@ -284,7 +284,7 @@ fun CreateEventScreen(
             SubmitButton(
                 onClick = viewModel::save,
                 isLoading = state.isSaving,
-                label = "SAVE EVENT",
+                label = if (state.isEditing) "SAVE CHANGES" else "SAVE EVENT",
                 fontSize = 22.sp,
                 letterSpacing = 4.sp
             )

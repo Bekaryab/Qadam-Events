@@ -9,8 +9,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 /**
  * Thin bridge between [EventsViewModel] and the stateless [EventsScreen].
  * Owns no state itself: it observes the ViewModel with a lifecycle-aware
- * collector and forwards state plus callbacks. Not connected to navigation
- * yet; the screen stays fully Previewable without a ViewModel.
+ * collector and forwards state plus callbacks.
  */
 @Composable
 fun EventsRoute(
@@ -18,17 +17,23 @@ fun EventsRoute(
     modifier: Modifier = Modifier
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val searchQuery by viewModel.searchQuery.collectAsStateWithLifecycle()
+    val selectedCategory by viewModel.selectedCategory.collectAsStateWithLifecycle()
+    val favoriteEventIds by viewModel.favoriteEventIds.collectAsStateWithLifecycle()
 
-    // Initial load only: after rotation the store-retained ViewModel already
-    // holds data, so this guard prevents a redundant refetch.
+    // Initial load only: a retained ViewModel in Success/Error must not refetch
+    // after rotation. A fresh ViewModel always starts in Loading.
     LaunchedEffect(Unit) {
-        if (viewModel.uiState.value.allEvents.isEmpty()) {
+        if (viewModel.uiState.value is EventsUiState.Loading) {
             viewModel.loadEvents()
         }
     }
 
     EventsScreen(
         uiState = uiState,
+        searchQuery = searchQuery,
+        selectedCategory = selectedCategory,
+        favoriteEventIds = favoriteEventIds,
         onSearchQueryChanged = viewModel::onSearchQueryChanged,
         onCategorySelected = viewModel::onCategorySelected,
         onFavoriteClick = viewModel::onFavoriteClick,

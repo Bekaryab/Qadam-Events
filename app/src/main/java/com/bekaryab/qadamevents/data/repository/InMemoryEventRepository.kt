@@ -31,6 +31,24 @@ class InMemoryEventRepository : EventRepository {
         return Result.success(event)
     }
 
+    override suspend fun updateEvent(event: Event): Result<Event> {
+        if (_events.value.none { it.id == event.id }) {
+            return Result.failure(NoSuchElementException("Event not found"))
+        }
+        _events.value = _events.value.map {
+            if (it.id == event.id) event else it
+        }
+        return Result.success(event)
+    }
+
+    override suspend fun deleteEvent(id: String): Result<Unit> {
+        if (_events.value.none { it.id == id }) {
+            return Result.failure(NoSuchElementException("Event not found"))
+        }
+        _events.value = _events.value.filterNot { it.id == id }
+        return Result.success(Unit)
+    }
+
     override var shouldFail: Boolean = false
 
     override suspend fun getEvents(): Result<List<Event>> = simulated {
@@ -59,7 +77,11 @@ class InMemoryEventRepository : EventRepository {
         }
 
     private fun storedPlusDemo(): List<Event> =
-        _events.value + SampleExploreEvents.popular
+        activeStored() + SampleExploreEvents.popular
+
+    /** Stored user events excluding archived ones (discovery stays active-only). */
+    private fun activeStored(): List<Event> =
+        _events.value.filterNot { it.isArchived }
 
     /**
      * Simulated server round-trip shared by the read operations above. The

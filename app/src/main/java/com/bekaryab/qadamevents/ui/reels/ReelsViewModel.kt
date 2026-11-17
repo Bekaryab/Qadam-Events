@@ -13,7 +13,8 @@ data class ReelsUiState(
     val saved: Boolean = false,
     val followed: Boolean = false,
     val commentsOpen: Boolean = false,
-    val moreOpen: Boolean = false
+    val moreOpen: Boolean = false,
+    val eventSheetOpen: Boolean = false
 )
 
 /**
@@ -38,7 +39,8 @@ class ReelsViewModel : ViewModel() {
                 saved = false,
                 followed = false,
                 commentsOpen = false,
-                moreOpen = false
+                moreOpen = false,
+                eventSheetOpen = false
             )
         }
     }
@@ -61,6 +63,10 @@ class ReelsViewModel : ViewModel() {
 
     fun setMoreOpen(open: Boolean) {
         _uiState.update { it.copy(moreOpen = open) }
+    }
+
+    fun setEventSheetOpen(open: Boolean) {
+        _uiState.update { it.copy(eventSheetOpen = open) }
     }
 
     companion object {

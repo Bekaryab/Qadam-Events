@@ -51,14 +51,17 @@ private val EventsBorder = Color(0xFFD4D4D4)
 private val EventsPurple = Color(0xFF6F49BF)
 
 /**
- * Stateless SIS 4 Events screen: renders [uiState] and emits user actions
- * through callbacks. Never touches a ViewModel, repository, or use case, and
- * performs no filtering itself. State priority: Loading > Error > Empty >
- * Content, so only one state is ever visible.
+ * Stateless Events screen that renders community posts: renders [uiState] and
+ * emits user actions through callbacks. Never touches a ViewModel, repository,
+ * or use case, and performs no filtering itself. The sealed state renders
+ * exactly one branch: Loading, Error, or Success (with an empty fallback).
  */
 @Composable
 fun EventsScreen(
     uiState: EventsUiState,
+    searchQuery: String,
+    selectedCategory: String?,
+    favoriteEventIds: Set<String>,
     onSearchQueryChanged: (String) -> Unit,
     onCategorySelected: (String?) -> Unit,
     onFavoriteClick: (String) -> Unit,
@@ -72,7 +75,7 @@ fun EventsScreen(
             .padding(horizontal = 16.dp, vertical = 12.dp)
     ) {
         Text(
-            text = "Events",
+            text = "Community Posts",
             fontFamily = AlumniSansSc,
             fontWeight = FontWeight.Black,
             fontSize = 26.sp,
@@ -84,12 +87,12 @@ fun EventsScreen(
         Spacer(modifier = Modifier.height(8.dp))
 
         OutlinedTextField(
-            value = uiState.searchQuery,
+            value = searchQuery,
             onValueChange = onSearchQueryChanged,
             modifier = Modifier.fillMaxWidth(),
             placeholder = {
                 Text(
-                    text = "Search events",
+                    text = "Search posts",
                     fontFamily = AlumniSansSc,
                     fontSize = 13.sp,
                     color = EventsMuted
@@ -122,14 +125,14 @@ fun EventsScreen(
             item(key = "all") {
                 CategoryChip(
                     label = "All",
-                    selected = uiState.selectedCategory == null,
+                    selected = selectedCategory == null,
                     onClick = { onCategorySelected(null) }
                 )
             }
             items(EventCategories, key = { it }) { category ->
                 CategoryChip(
                     label = category,
-                    selected = uiState.selectedCategory == category,
+                    selected = selectedCategory == category,
                     onClick = { onCategorySelected(category) }
                 )
             }
@@ -142,27 +145,29 @@ fun EventsScreen(
                 .weight(1f)
                 .fillMaxWidth()
         ) {
-            when {
-                uiState.isLoading -> LoadingContent()
+            when (uiState) {
+                EventsUiState.Loading -> LoadingContent()
 
-                uiState.errorMessage != null -> ErrorContent(
-                    message = uiState.errorMessage,
+                is EventsUiState.Error -> ErrorContent(
+                    message = uiState.message,
                     onRetry = onRetry
                 )
 
-                uiState.visibleEvents.isEmpty() -> EmptyContent()
-
-                else -> LazyColumn(
-                    modifier = Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(bottom = 8.dp),
-                    verticalArrangement = Arrangement.spacedBy(10.dp)
-                ) {
-                    items(uiState.visibleEvents, key = { it.id }) { event ->
-                        EventRow(
-                            event = event,
-                            isFavorite = event.id in uiState.favoriteEventIds,
-                            onFavoriteClick = { onFavoriteClick(event.id) }
-                        )
+                is EventsUiState.Success -> if (uiState.events.isEmpty()) {
+                    EmptyContent()
+                } else {
+                    LazyColumn(
+                        modifier = Modifier.fillMaxSize(),
+                        contentPadding = PaddingValues(bottom =8.dp),
+                        verticalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        items(uiState.events, key = { it.id }) { event ->
+                            EventRow(
+                                event = event,
+                                isFavorite = event.id in favoriteEventIds,
+                                onFavoriteClick = { onFavoriteClick(event.id) }
+                            )
+                        }
                     }
                 }
             }
@@ -307,7 +312,7 @@ private fun EmptyContent() {
         )
         Spacer(modifier = Modifier.height(8.dp))
         Text(
-            text = "No events found",
+            text = "No posts found",
             fontFamily = AlumniSansSc,
             fontWeight = FontWeight.Medium,
             fontSize = 14.sp,
@@ -320,21 +325,21 @@ private fun EmptyContent() {
 private fun previewEvents() = listOf(
     Event(
         id = "preview-1",
-        title = "KBTU Hackathon 2026",
-        location = "Almaty, KBTU",
-        time = "25 Oct 2026 · 10:00",
-        dateBadge = "25 OCT",
-        description = "Code all night",
-        category = "Hackathon"
+        title = "Example post title",
+        location = "Online · User #121",
+        time = "305 views · 192 likes",
+        dateBadge = "POST",
+        description = "Example post content",
+        category = "History"
     ),
     Event(
         id = "preview-2",
-        title = "Design Meetup",
-        location = "Almaty, Most Hub",
-        time = "05 Nov 2026 · 18:00",
-        dateBadge = "05 NOV",
-        description = "Pixels and prototypes",
-        category = "Meetup"
+        title = "Community update",
+        location = "Online · User #84",
+        time = "88 views · 12 likes",
+        dateBadge = "POST",
+        description = "A short community post",
+        category = "Fiction"
     )
 )
 
@@ -343,7 +348,10 @@ private fun previewEvents() = listOf(
 private fun EventsLoadingPreview() {
     MaterialTheme {
         EventsScreen(
-            uiState = EventsUiState(isLoading = true),
+            uiState = EventsUiState.Loading,
+            searchQuery = "",
+            selectedCategory = null,
+            favoriteEventIds = emptySet(),
             onSearchQueryChanged = {},
             onCategorySelected = {},
             onFavoriteClick = {},
@@ -357,12 +365,10 @@ private fun EventsLoadingPreview() {
 private fun EventsContentPreview() {
     MaterialTheme {
         EventsScreen(
-            uiState = EventsUiState(
-                allEvents = previewEvents(),
-                visibleEvents = previewEvents(),
-                searchQuery = "hack",
-                favoriteEventIds = setOf("preview-1")
-            ),
+            uiState = EventsUiState.Success(previewEvents()),
+            searchQuery = "hack",
+            selectedCategory = null,
+            favoriteEventIds = setOf("preview-1"),
             onSearchQueryChanged = {},
             onCategorySelected = {},
             onFavoriteClick = {},
@@ -376,7 +382,10 @@ private fun EventsContentPreview() {
 private fun EventsEmptyPreview() {
     MaterialTheme {
         EventsScreen(
-            uiState = EventsUiState(),
+            uiState = EventsUiState.Success(emptyList()),
+            searchQuery = "",
+            selectedCategory = null,
+            favoriteEventIds = emptySet(),
             onSearchQueryChanged = {},
             onCategorySelected = {},
             onFavoriteClick = {},
@@ -390,7 +399,10 @@ private fun EventsEmptyPreview() {
 private fun EventsErrorPreview() {
     MaterialTheme {
         EventsScreen(
-            uiState = EventsUiState(errorMessage = "Couldn't load events. Try again."),
+            uiState = EventsUiState.Error("Couldn't load events. Try again."),
+            searchQuery = "",
+            selectedCategory = null,
+            favoriteEventIds = emptySet(),
             onSearchQueryChanged = {},
             onCategorySelected = {},
             onFavoriteClick = {},

@@ -3,19 +3,19 @@ package com.bekaryab.qadamevents.ui.events.list
 import com.bekaryab.qadamevents.domain.model.Event
 
 /**
- * Single immutable state for the SIS 4 Events screen. All properties are
- * `val`; every update goes through `copy()`. The four UI states derive from
- * [isLoading], [errorMessage], and [visibleEvents]:
- * Loading = isLoading; Error = !isLoading && errorMessage != null;
- * Empty = !isLoading && errorMessage == null && visibleEvents.isEmpty();
- * Content = otherwise.
+ * Screen state for the Events feature.
+ *
+ * [Success.events] is the list after local search/category filtering;
+ * the unfiltered list stays inside the ViewModel.
  */
-data class EventsUiState(
-    val allEvents: List<Event> = emptyList(),
-    val visibleEvents: List<Event> = emptyList(),
-    val searchQuery: String = "",
-    val selectedCategory: String? = null,
-    val favoriteEventIds: Set<String> = emptySet(),
-    val isLoading: Boolean = false,
-    val errorMessage: String? = null
-)
+sealed interface EventsUiState {
+
+    /** Initial and refetch state. */
+    data object Loading : EventsUiState
+
+    /** Events ready to render (possibly empty). */
+    data class Success(val events: List<Event>) : EventsUiState
+
+    /** Request failed; [message] is user-readable. */
+    data class Error(val message: String) : EventsUiState
+}

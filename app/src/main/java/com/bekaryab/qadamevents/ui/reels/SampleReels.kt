@@ -1,5 +1,7 @@
 package com.bekaryab.qadamevents.ui.reels
 
+import androidx.annotation.RawRes
+import com.bekaryab.qadamevents.R
 import com.bekaryab.qadamevents.domain.model.Event
 
 /** Feed selector options. */
@@ -19,7 +21,13 @@ data class ReelDemo(
     val baseLikes: Int,
     val comments: Int,
     val shares: Int,
-    val event: Event
+    val event: Event,
+    /**
+     * Local demo video for this feed, or null when no asset exists (the
+     * gradient placeholder is shown instead). Only two videos were provided,
+     * so PEOPLE has none — no fake third video is invented.
+     */
+    @RawRes val videoRes: Int? = null
 )
 
 /** Clearly separated temporary demo source. Delete once a reels feed exists. */
@@ -34,6 +42,7 @@ object SampleReels {
         baseLikes = 1200,
         comments = 84,
         shares = 128,
+        videoRes = R.raw.reel_demo,
         event = Event(
             id = "kbtu-hackaton-2026",
             title = "KBTU Hackathon 2026",
@@ -52,6 +61,7 @@ object SampleReels {
         baseLikes = 860,
         comments = 41,
         shares = 57,
+        videoRes = R.raw.reel_demo2,
         event = Event(
             id = "startup-weekend-almaty",
             title = "Almaty Startup Weekend",

@@ -17,6 +17,7 @@ import com.bekaryab.qadamevents.ui.auth.RegisterScreen
 import com.bekaryab.qadamevents.ui.auth.RegisterViewModel
 import com.bekaryab.qadamevents.ui.events.create.CreateEventScreen
 import com.bekaryab.qadamevents.ui.events.create.CreateEventViewModel
+import com.bekaryab.qadamevents.ui.events.manage.EventManageViewModel
 import com.bekaryab.qadamevents.ui.explore.ExploreScreen
 import com.bekaryab.qadamevents.ui.explore.ExploreViewModel
 import com.bekaryab.qadamevents.ui.profile.ProfileScreen
@@ -91,13 +92,23 @@ fun AppNavGraph(
                 )
             }
             val exploreViewModel = remember {
-                ExploreViewModel(AppModule.eventRepository)
+                ExploreViewModel(
+                    AppModule.eventRepository,
+                    AppModule.remoteEventRepository
+                )
             }
+            val manageViewModel = remember {
+                EventManageViewModel(AppModule.eventRepository)
+            }
+            val manageState by manageViewModel.uiState.collectAsState()
             var profileSectionName by rememberSaveable {
                 mutableStateOf(ProfileSection.MY_EVENTS.name)
             }
             val currentUid = currentUser?.uid
-            val myEvents = allEvents.filter { it.ownerUid == currentUid }
+            // Archived items never appear in the active My Events list.
+            val myEvents = allEvents.filter {
+                it.ownerUid == currentUid && !it.isArchived
+            }
 
             if (tab == QadamTab.Reels) {
                 // Reels overlay: media fills the whole region INCLUDING behind
@@ -149,7 +160,26 @@ fun AppNavGraph(
                             onSectionChange = { profileSectionName = it.name },
                             myEvents = myEvents,
                             allEvents = allEvents,
-                            onCreateEvent = { tab = QadamTab.Create }
+                            onCreateEvent = {
+                                createViewModel.resetForm()
+                                tab = QadamTab.Create
+                            },
+                            onEditEvent = { event ->
+                                createViewModel.loadForEdit(event)
+                                tab = QadamTab.Create
+                            },
+                            onArchiveEvent = { event ->
+                                manageViewModel.archiveEvent(event.id, currentUid)
+                            },
+                            onRestoreEvent = { event ->
+                                manageViewModel.restoreEvent(event.id, currentUid)
+                            },
+                            onDeleteEvent = { event ->
+                                manageViewModel.deleteEvent(event.id, currentUid)
+                            },
+                            manageNotice = manageState.notice,
+                            manageError = manageState.errorMessage,
+                            onConsumeManageFeedback = manageViewModel::consumeFeedback
                         )
                     } else if (tab == QadamTab.Explore) {
                         ExploreScreen(viewModel = exploreViewModel)
@@ -157,6 +187,7 @@ fun AppNavGraph(
                         CreateEventScreen(
                             viewModel = createViewModel,
                             onSaved = {
+                                createViewModel.resetForm()
                                 tab = QadamTab.Profile
                                 profileSectionName = ProfileSection.MY_EVENTS.name
                             }

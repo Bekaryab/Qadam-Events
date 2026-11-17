@@ -53,7 +53,7 @@ class MainActivity : ComponentActivity() {
         val eventsViewModel = if (debugEvents) {
             ViewModelProvider(
                 this,
-                EventsViewModelFactory(AppModule.eventRepository)
+                EventsViewModelFactory(AppModule.remoteEventRepository)
             )[EventsViewModel::class.java]
         } else {
             null

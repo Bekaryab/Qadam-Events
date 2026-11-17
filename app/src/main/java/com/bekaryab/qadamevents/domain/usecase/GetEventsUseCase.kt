@@ -1,12 +1,17 @@
 package com.bekaryab.qadamevents.domain.usecase
 
 import com.bekaryab.qadamevents.domain.model.Event
-import com.bekaryab.qadamevents.domain.repository.EventRepository
+import com.bekaryab.qadamevents.domain.repository.RemoteEventRepository
 
-/** Retrieves the event list through the repository (simulated latency inside). */
+/**
+ * Retrieves the event list from the remote repository.
+ *
+ * Network and mapping exceptions propagate to the caller.
+ */
 class GetEventsUseCase(
-    private val repository: EventRepository
+    private val remoteRepository: RemoteEventRepository
 ) {
-    suspend operator fun invoke(): Result<List<Event>> =
-        repository.getEvents()
+
+    suspend operator fun invoke(): List<Event> =
+        remoteRepository.getEvents()
 }

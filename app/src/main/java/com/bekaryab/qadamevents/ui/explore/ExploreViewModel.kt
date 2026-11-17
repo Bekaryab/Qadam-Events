@@ -5,6 +5,9 @@ import androidx.lifecycle.viewModelScope
 import com.bekaryab.qadamevents.data.local.SampleExploreEvents
 import com.bekaryab.qadamevents.domain.model.Event
 import com.bekaryab.qadamevents.domain.repository.EventRepository
+import com.bekaryab.qadamevents.domain.repository.RemoteEventRepository
+import java.io.IOException
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -12,6 +15,8 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
+import retrofit2.HttpException
 
 /** Feed tabs for the Explore category row. */
 enum class ExploreFeed(val label: String) {
@@ -30,7 +35,8 @@ data class ExploreInterest(
 )
 
 class ExploreViewModel(
-    private val eventRepository: EventRepository
+    private val eventRepository: EventRepository,
+    private val remoteEventRepository: RemoteEventRepository
 ) : ViewModel() {
 
     private val _query = MutableStateFlow("")
@@ -51,6 +57,14 @@ class ExploreViewModel(
 
     private val _bookmarkedIds = MutableStateFlow<List<String>>(emptyList())
     val bookmarkedIds: StateFlow<List<String>> = _bookmarkedIds.asStateFlow()
+
+    private val _communityPosts =
+        MutableStateFlow<CommunityPostsUiState>(CommunityPostsUiState.Loading)
+    val communityPosts: StateFlow<CommunityPostsUiState> =
+        _communityPosts.asStateFlow()
+
+    private var allCommunityPosts: List<Event> = emptyList()
+    private var communityPostsRequested = false
 
     /**
      * Visible Popular rows. Combines user-created repository events with the
@@ -74,9 +88,11 @@ class ExploreViewModel(
         upcomingOnly: Boolean,
         category: String?
     ): List<Event> {
+        // Archived user events stay out of public discovery lists.
+        val activeUserEvents = userEvents.filterNot { it.isArchived }
         val base: List<Event> = when (feed) {
-            ExploreFeed.FOR_YOU -> userEvents + SampleExploreEvents.popular
-            ExploreFeed.EVENTS -> userEvents
+            ExploreFeed.FOR_YOU -> activeUserEvents + SampleExploreEvents.popular
+            ExploreFeed.EVENTS -> activeUserEvents
             ExploreFeed.PEOPLE, ExploreFeed.PLACES -> emptyList()
         }
         val searched = if (query.isBlank()) {
@@ -99,8 +115,72 @@ class ExploreViewModel(
         }
     }
 
+    /**
+     * First call from Explore opens the remote section. The guard prevents
+     * recomposition or tab switches from starting a duplicate request.
+     */
+    fun loadCommunityPosts() {
+        if (communityPostsRequested) return
+        communityPostsRequested = true
+        fetchCommunityPosts()
+    }
+
+    /** Error-state retry: shows Loading and performs a new HTTP request. */
+    fun retryCommunityPosts() {
+        communityPostsRequested = true
+        fetchCommunityPosts()
+    }
+
+    private fun fetchCommunityPosts() {
+        _communityPosts.value = CommunityPostsUiState.Loading
+        viewModelScope.launch {
+            try {
+                val posts = remoteEventRepository.getEvents()
+                allCommunityPosts = posts
+                _communityPosts.value = CommunityPostsUiState.Success(
+                    filterCommunityPosts(posts, _query.value)
+                )
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (_: IOException) {
+                _communityPosts.value = CommunityPostsUiState.Error(
+                    "Couldn't reach the server. Check your connection and try again."
+                )
+            } catch (error: HttpException) {
+                _communityPosts.value = CommunityPostsUiState.Error(
+                    "Server error (${error.code()}). Please try again."
+                )
+            } catch (error: Exception) {
+                _communityPosts.value = CommunityPostsUiState.Error(
+                    error.message?.takeIf { it.isNotBlank() }
+                        ?: "Couldn't load community posts. Try again."
+                )
+            }
+        }
+    }
+
+    private fun filterCommunityPosts(posts: List<Event>, query: String): List<Event> {
+        if (query.isBlank()) return posts
+        return posts.filter {
+            it.title.contains(query, ignoreCase = true) ||
+                it.description.contains(query, ignoreCase = true) ||
+                it.category.contains(query, ignoreCase = true) ||
+                it.location.contains(query, ignoreCase = true)
+        }
+    }
+
+    private fun refreshCommunityPosts() {
+        val current = _communityPosts.value
+        if (current is CommunityPostsUiState.Success) {
+            _communityPosts.value = CommunityPostsUiState.Success(
+                filterCommunityPosts(allCommunityPosts, _query.value)
+            )
+        }
+    }
+
     fun setQuery(value: String) {
         _query.update { value }
+        refreshCommunityPosts()
     }
 
     fun selectFeed(feed: ExploreFeed) {
@@ -120,6 +200,7 @@ class ExploreViewModel(
         _category.update { null }
         _upcomingOnly.update { false }
         _query.update { "" }
+        refreshCommunityPosts()
     }
 
     fun toggleBookmark(id: String) {

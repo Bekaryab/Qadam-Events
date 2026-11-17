@@ -30,6 +30,7 @@ enum class ProfileSection(val label: String) {
     MY_EVENTS("MY EVENTS"),
     SAVES("SAVES"),
     LIKES("LIKES"),
+    ARCHIVED("ARCHIVED"),
     SETTINGS("SETTINGS")
 }
 
