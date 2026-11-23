@@ -49,6 +49,7 @@ dependencies {
     implementation(
         platform("com.google.firebase:firebase-bom:35.0.0")
     )
+    implementation("com.google.android.gms:play-services-location:21.4.0")
 
     // Firebase Authentication
     implementation(platform("com.google.firebase:firebase-bom:34.19.0"))

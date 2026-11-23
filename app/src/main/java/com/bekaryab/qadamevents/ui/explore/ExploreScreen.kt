@@ -126,9 +126,9 @@ fun ExploreScreen(
             verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
             item(key = "header") {
-                ExploreHeader(onLocationClick = {
-                    soon("Location selection is coming soon")
-                })
+                ExploreLocationHeader(
+                    viewModel = viewModel
+                )
             }
 
             item(key = "search") {
