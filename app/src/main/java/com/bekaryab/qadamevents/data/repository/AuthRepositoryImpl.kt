@@ -11,8 +11,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.tasks.await
 
 class AuthRepositoryImpl(
-    private val firebaseAuth: FirebaseAuth =
-        FirebaseAuth.getInstance()
+    private val firebaseAuth: FirebaseAuth
 ) : AuthRepository {
 
     private val _authState =

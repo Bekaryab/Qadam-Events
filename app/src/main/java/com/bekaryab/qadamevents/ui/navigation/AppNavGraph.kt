@@ -9,11 +9,9 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 
-import com.bekaryab.qadamevents.data.location.DeviceLocationRepository
-import com.bekaryab.qadamevents.di.AppModule
+import com.bekaryab.qadamevents.domain.repository.AuthRepository
 import com.bekaryab.qadamevents.ui.auth.LoginScreen
 import com.bekaryab.qadamevents.ui.auth.LoginViewModel
 import com.bekaryab.qadamevents.ui.auth.RegisterScreen
@@ -27,20 +25,20 @@ import com.bekaryab.qadamevents.ui.profile.ProfileScreen
 import com.bekaryab.qadamevents.ui.profile.ProfileSection
 import com.bekaryab.qadamevents.ui.reels.ReelsScreen
 import com.bekaryab.qadamevents.ui.reels.ReelsViewModel
+import org.koin.androidx.compose.koinViewModel
+import org.koin.compose.koinInject
 
 @Composable
 fun AppNavGraph(
-    loginViewModel: LoginViewModel,
-    registerViewModel: RegisterViewModel
+    loginViewModel: LoginViewModel = koinViewModel(),
+    registerViewModel: RegisterViewModel = koinViewModel()
 ) {
     val loginState by loginViewModel.uiState.collectAsState()
     val registerState by registerViewModel.uiState.collectAsState()
 
-    // Application context for location services.
-    val appContext = LocalContext.current.applicationContext
-
     // Firebase session state.
-    val sessionUser by AppModule.authRepository.authState.collectAsState()
+    val authRepository: AuthRepository = koinInject()
+    val sessionUser by authRepository.authState.collectAsState()
 
     // null = session is still resolving.
     var destination by rememberSaveable {
@@ -80,34 +78,20 @@ fun AppNavGraph(
                 mutableStateOf(QadamTab.Profile)
             }
 
-            val reelsViewModel = remember {
-                ReelsViewModel()
-            }
+            val reelsViewModel: ReelsViewModel = koinViewModel()
 
             // Shared events repository.
-            val allEvents by AppModule.eventRepository.events.collectAsState()
+            val eventRepository: com.bekaryab.qadamevents.domain.repository.EventRepository = koinInject()
+            val allEvents by eventRepository.events.collectAsState()
 
             // Create event ViewModel.
-            val createViewModel = remember {
-                CreateEventViewModel(
-                    AppModule.eventRepository,
-                    AppModule.authRepository
-                )
-            }
+            val createViewModel: CreateEventViewModel = koinViewModel()
 
             // Location-enabled Explore ViewModel.
-            val exploreViewModel = remember(appContext) {
-                ExploreViewModel(
-                    eventRepository = AppModule.eventRepository,
-                    remoteEventRepository = AppModule.remoteEventRepository,
-                    locationRepository = DeviceLocationRepository(appContext)
-                )
-            }
+            val exploreViewModel: ExploreViewModel = koinViewModel()
 
             // Event management ViewModel.
-            val manageViewModel = remember {
-                EventManageViewModel(AppModule.eventRepository)
-            }
+            val manageViewModel: EventManageViewModel = koinViewModel()
 
             val manageState by manageViewModel.uiState.collectAsState()
 
