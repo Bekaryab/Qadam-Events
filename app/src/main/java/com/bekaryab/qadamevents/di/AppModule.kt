@@ -1,42 +1,47 @@
 package com.bekaryab.qadamevents.di
 
-import com.bekaryab.qadamevents.BuildConfig
-import com.bekaryab.qadamevents.core.network.RetrofitClient
-import com.bekaryab.qadamevents.data.remote.PostApi
+import androidx.lifecycle.SavedStateHandle
+import com.bekaryab.qadamevents.data.location.DeviceLocationRepository
 import com.bekaryab.qadamevents.data.repository.ApiEventRepository
 import com.bekaryab.qadamevents.data.repository.AuthRepositoryImpl
 import com.bekaryab.qadamevents.data.repository.InMemoryEventRepository
 import com.bekaryab.qadamevents.domain.repository.AuthRepository
 import com.bekaryab.qadamevents.domain.repository.EventRepository
+import com.bekaryab.qadamevents.domain.repository.LocationRepository
 import com.bekaryab.qadamevents.domain.repository.RemoteEventRepository
-import com.bekaryab.qadamevents.ui.auth.AuthViewModelFactory
+import com.bekaryab.qadamevents.domain.usecase.GetEventDetailsUseCase
+import com.bekaryab.qadamevents.domain.usecase.GetEventsUseCase
+import com.bekaryab.qadamevents.domain.usecase.SearchEventsUseCase
+import com.bekaryab.qadamevents.ui.auth.LoginViewModel
+import com.bekaryab.qadamevents.ui.auth.RegisterViewModel
+import com.bekaryab.qadamevents.ui.events.create.CreateEventViewModel
+import com.bekaryab.qadamevents.ui.events.list.EventsViewModel
+import com.bekaryab.qadamevents.ui.events.manage.EventManageViewModel
+import com.bekaryab.qadamevents.ui.explore.ExploreViewModel
+import com.bekaryab.qadamevents.ui.reels.ReelsViewModel
 import com.google.firebase.auth.FirebaseAuth
+import org.koin.core.module.dsl.singleOf
+import org.koin.core.module.dsl.viewModel
+import org.koin.dsl.bind
+import org.koin.dsl.module
 
-object AppModule {
+val appModule = module {
+    single { FirebaseAuth.getInstance() }
 
-    private val firebaseAuth: FirebaseAuth by lazy {
-        FirebaseAuth.getInstance()
-    }
+    singleOf(::AuthRepositoryImpl) bind AuthRepository::class
+    singleOf(::InMemoryEventRepository) bind EventRepository::class
+    singleOf(::ApiEventRepository) bind RemoteEventRepository::class
+    singleOf(::DeviceLocationRepository) bind LocationRepository::class
 
-    val authRepository: AuthRepository by lazy {
-        AuthRepositoryImpl(firebaseAuth)
-    }
+    singleOf(::GetEventsUseCase)
+    singleOf(::SearchEventsUseCase)
+    singleOf(::GetEventDetailsUseCase)
 
-    val authViewModelFactory: AuthViewModelFactory by lazy {
-        AuthViewModelFactory(authRepository)
-    }
-
-    // Singleton: the list (and its StateFlow) survives navigation and
-    // configuration changes. In-memory only — see InMemoryEventRepository.
-    val eventRepository: EventRepository by lazy {
-        InMemoryEventRepository()
-    }
-
-    // Remote API repository. The base URL comes from BuildConfig, so it can be
-    // changed with -PEVENTS_BASE_URL. The default is the public DummyJSON
-    // demo API. The "posts" path is defined by PostApi.
-    val remoteEventRepository: RemoteEventRepository by lazy {
-        val retrofit = RetrofitClient.create(BuildConfig.EVENTS_BASE_URL)
-        ApiEventRepository(retrofit.create(PostApi::class.java))
-    }
+    viewModel { LoginViewModel(get()) }
+    viewModel { RegisterViewModel(get()) }
+    viewModel { EventsViewModel(get(), get<SavedStateHandle>()) }
+    viewModel { CreateEventViewModel(get(), get()) }
+    viewModel { ExploreViewModel(get(), get(), get()) }
+    viewModel { EventManageViewModel(get()) }
+    viewModel { ReelsViewModel() }
 }

@@ -9,15 +9,12 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.ui.Modifier
-import androidx.lifecycle.ViewModelProvider
-import com.bekaryab.qadamevents.di.AppModule
-import com.bekaryab.qadamevents.ui.auth.LoginViewModel
-import com.bekaryab.qadamevents.ui.auth.RegisterViewModel
 import com.bekaryab.qadamevents.ui.events.list.EventsRoute
 import com.bekaryab.qadamevents.ui.events.list.EventsViewModel
-import com.bekaryab.qadamevents.ui.events.list.EventsViewModelFactory
 import com.bekaryab.qadamevents.ui.navigation.AppNavGraph
 import com.bekaryab.qadamevents.ui.theme.QadamEventsTheme
+import com.bekaryab.qadamevents.domain.repository.EventRepository
+import org.koin.android.ext.android.inject
 
 class MainActivity : ComponentActivity() {
 
@@ -32,31 +29,9 @@ class MainActivity : ComponentActivity() {
         if (BuildConfig.DEBUG &&
             intent.getBooleanExtra(EXTRA_DEBUG_SHOULD_FAIL, false)
         ) {
-            AppModule.eventRepository.shouldFail = true
-        }
-
-        val factory = AppModule.authViewModelFactory
-
-        val loginViewModel = ViewModelProvider(
-            this,
-            factory
-        )[LoginViewModel::class.java]
-
-        val registerViewModel = ViewModelProvider(
-            this,
-            factory
-        )[RegisterViewModel::class.java]
-
-        // Obtained from the Activity's ViewModelStore (same pattern as the
-        // auth ViewModels), so rotation returns the SAME instance instead of
-        // creating a new one. Created only for the debug path.
-        val eventsViewModel = if (debugEvents) {
-            ViewModelProvider(
-                this,
-                EventsViewModelFactory(AppModule.remoteEventRepository)
-            )[EventsViewModel::class.java]
-        } else {
-            null
+            // Debug-only failure switch is applied through the Koin singleton.
+            val eventRepository by inject<EventRepository>()
+            eventRepository.shouldFail = true
         }
 
         setContent {
@@ -65,13 +40,10 @@ class MainActivity : ComponentActivity() {
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
                 ) {
-                    if (debugEvents && eventsViewModel != null) {
-                        EventsRoute(viewModel = eventsViewModel)
+                    if (debugEvents) {
+                        EventsRoute()
                     } else {
-                        AppNavGraph(
-                            loginViewModel = loginViewModel,
-                            registerViewModel = registerViewModel
-                        )
+                        AppNavGraph()
                     }
                 }
             }

@@ -5,6 +5,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import org.koin.androidx.compose.koinViewModel
 
 /**
  * Thin bridge between [EventsViewModel] and the stateless [EventsScreen].
@@ -13,7 +14,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
  */
 @Composable
 fun EventsRoute(
-    viewModel: EventsViewModel,
+    viewModel: EventsViewModel = koinViewModel(),
     modifier: Modifier = Modifier
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
